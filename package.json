@@ -1,0 +1,17 @@
+{
+  "name": "restosphere",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "RestoSphere smart restaurant SaaS",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check api/index.js && node --check assets/app.js && node --check server.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
+  }
+}
