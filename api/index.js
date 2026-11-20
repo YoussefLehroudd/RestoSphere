@@ -42,17 +42,17 @@ const idOk = s => /^[a-f0-9]{8}-[a-f0-9-]{27,36}$/i.test(String(s||''));
 const requireId = v => {if(!idOk(v))error(400,'Invalid identifier');return v;};
 const requireUser = u => {if(!u)error(401,'Please sign in');return u;};
 async function starter(orgId) {
- const tableNames=['T01','T02','T03','T04','T05','T06','T07','T08','T09','T10','T11','T12'];
- for(const name of tableNames)await q('INSERT INTO dining_tables(org_id,name,seats) VALUES($1,$2,$3)',[orgId,name,Number(name.slice(1))%3===0?6:4]);
+ await q("INSERT INTO dining_tables(org_id,name,seats) SELECT $1, 'T' || lpad(n::text,2,'0'), CASE WHEN n%3=0 THEN 6 ELSE 4 END FROM generate_series(1,12) AS n",[orgId]);
  const menu=[
  ['Margherita Pizza','Pizza','🍕',75,28],['Truffle Pasta','Main Course','🍝',110,44],
  ['Classic Burger','Burgers','🍔',95,36],['Caesar Salad','Salads','🥗',65,22],
  ['Grilled Salmon','Main Course','🐟',145,68],['Tiramisu','Desserts','🍰',55,17],
  ['Iced Matcha','Drinks','🍵',42,12],['Fresh Lemonade','Drinks','🍋',35,9]
- ];
- for(const p of menu)await q('INSERT INTO products(org_id,name,category,emoji,price,cost) VALUES($1,$2,$3,$4,$5,$6)',[orgId,...p]);
- for(const row of [['Tomatoes','kg',14,5,14],['Mozzarella','kg',8,4,65],['Flour','kg',22,6,9],['Chicken','kg',4,5,52],['Coffee beans','kg',6,2,120]])
- await q('INSERT INTO inventory(org_id,name,unit,quantity,threshold,cost_per_unit) VALUES($1,$2,$3,$4,$5,$6)',[orgId,...row]);
+ ].map(([name,category,emoji,price,cost])=>({name,category,emoji,price,cost}));
+ await q("INSERT INTO products(org_id,name,category,emoji,price,cost) SELECT $1,p.name,p.category,p.emoji,p.price,p.cost FROM jsonb_to_recordset($2::jsonb) AS p(name text,category text,emoji text,price numeric,cost numeric)",[orgId,JSON.stringify(menu)]);
+ const ingredients=[['Tomatoes','kg',14,5,14],['Mozzarella','kg',8,4,65],['Flour','kg',22,6,9],['Chicken','kg',4,5,52],['Coffee beans','kg',6,2,120]]
+ .map(([name,unit,quantity,threshold,cost_per_unit])=>({name,unit,quantity,threshold,cost_per_unit}));
+ await q("INSERT INTO inventory(org_id,name,unit,quantity,threshold,cost_per_unit) SELECT $1,i.name,i.unit,i.quantity,i.threshold,i.cost_per_unit FROM jsonb_to_recordset($2::jsonb) AS i(name text,unit text,quantity numeric,threshold numeric,cost_per_unit numeric)",[orgId,JSON.stringify(ingredients)]);
 }
 async function makeOrder({orgId,tableId,items,note,source}){
  if(!idOk(tableId))error(400,'Please select a table');
@@ -67,7 +67,7 @@ async function makeOrder({orgId,tableId,items,note,source}){
  const lookup=new Map(rows.map(p=>[p.id,p]));
  const total=Math.round(normalized.reduce((s,i)=>s+currency(lookup.get(i.id).price)*i.qty,0)*100)/100;
  const [order]=await q('INSERT INTO orders(org_id,table_id,total,note,source) VALUES($1,$2,$3,$4,$5) RETURNING id,status,created_at',[orgId,tableId,total,safeStr(note,350),source]);
- for(const item of normalized){const p=lookup.get(item.id);await q('INSERT INTO order_items(order_id,product_id,name,quantity,unit_price) VALUES($1,$2,$3,$4,$5)',[order.id,item.id,p.name,item.qty,p.price]);}
+ await q("INSERT INTO order_items(order_id,product_id,name,quantity,unit_price) SELECT $1,p.id,p.name,i.qty,p.price FROM jsonb_to_recordset($2::jsonb) AS i(id uuid,qty int) JOIN products p ON p.id=i.id WHERE p.org_id=$3",[order.id,JSON.stringify(normalized),orgId]);
  await q("UPDATE dining_tables SET status='occupied' WHERE id=$1 AND org_id=$2",[tableId,orgId]);
  return {id:order.id,total,status:order.status};
 }
