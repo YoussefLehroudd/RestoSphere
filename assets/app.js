@@ -12,7 +12,7 @@ function toast(text,isError=false){
  const div=document.createElement('div');div.className='toast'+(isError?' error':'');div.textContent=(isError?'⚠ ':'✓ ')+text;toastLayer.appendChild(div);setTimeout(()=>div.remove(),4100);
 }
 async function api(action,body=null,params={}){
- const u=new URL('/api/index.js',location.origin);u.searchParams.set('action',action);Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+ const u=new URL('/api/index',location.origin);u.searchParams.set('action',action);Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
  let res;
  try{res=await fetch(u,{method:body?'POST':'GET',credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,cache:'no-store'});}
  catch{throw Error('Could not reach the server. Please try again.');}
@@ -299,6 +299,7 @@ function initialize(){
   catch(err){toast(err.message,true);button.disabled=false;}
  });
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modalLayer.innerHTML.includes('guest-order-processing'))closeModal();});
+ setInterval(()=>{if(state.mode==='live'&&!app.hidden&&!document.hidden&&(!modalLayer.innerHTML)&&['overview','orders','kitchen','tables'].includes(state.page))refresh(false).catch(()=>{});},15000);
  if(new URLSearchParams(location.search).has('menu')||new URLSearchParams(location.search).has('demoMenu'))startGuest();
  else api('auth.me').then(()=>enterLive()).catch(()=>{auth.hidden=false;app.hidden=true;guestScreen.hidden=true;});
 }
