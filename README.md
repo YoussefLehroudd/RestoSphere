@@ -28,6 +28,12 @@ The in-browser demo uses localStorage and sample data; real restaurant users, th
 
 The repository is intended for a GitHub-connected Vercel project using `vercel.json` and `api/index.js`. Add a secure `DATABASE_URL` to Production, Preview and Development as needed before deploying.
 
+## Optional static demo on GitHub Pages
+
+GitHub Pages cannot automatically enable itself for this repository with the workflow token. A repository administrator can enable **Settings → Pages → Build and deployment → GitHub Actions**, then manually run **Actions → Publish interactive demo → Run workflow**.
+
+This optional static site supports the interactive **Explore demo** experience only. Public multi-device QR orders, live signup and database persistence require a serverless host for `api/index.js` and a configured `DATABASE_URL`.
+
 ## Security
 
 Passwords are scrypt-hashed with per-user salt, sessions use random opaque HttpOnly cookies, staff API routes check the signed-in user's organization, and guest prices are computed server-side. Use HTTPS for production. The demo is a prototype; add monitoring, transactional stock accounting, advanced rate limits and payment processing before production-critical usage.
